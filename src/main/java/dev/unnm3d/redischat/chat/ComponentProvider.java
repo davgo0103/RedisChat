@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TranslatableComponent;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
@@ -266,11 +267,17 @@ public class ComponentProvider {
         ItemStack itemStack = player.getInventory().getItemInMainHand();
         Component itemName;
         if (itemStack.getItemMeta() != null && itemNameProvider.hasItemName(itemStack)) {
-            final String unSubstitutedName = itemNameProvider.getItemName(itemStack);
-            itemName = player.hasPermission(Permissions.USE_FORMATTING.getPermission()) ?
-                    LegacyComponentSerializer.legacySection()
-                            .deserialize(replaceAmpersandCodesWithSection(unSubstitutedName)) :
-                    LegacyComponentSerializer.legacySection().deserialize(unSubstitutedName);
+            final Component nameComponent = itemNameProvider.getItemNameComponent(itemStack);
+            if (nameComponent != null && containsTranslatable(nameComponent)) {
+                //Keep translatable names as components, so the client can translate them
+                itemName = nameComponent;
+            } else {
+                final String unSubstitutedName = itemNameProvider.getItemName(itemStack);
+                itemName = player.hasPermission(Permissions.USE_FORMATTING.getPermission()) ?
+                        LegacyComponentSerializer.legacySection()
+                                .deserialize(replaceAmpersandCodesWithSection(unSubstitutedName)) :
+                        LegacyComponentSerializer.legacySection().deserialize(unSubstitutedName);
+            }
         } else if (itemStack.getType().isAir()) {
             itemName = Component.text(plugin.config.nothing_tag);
         } else {
@@ -278,6 +285,14 @@ public class ComponentProvider {
         }
         if (plugin.config.hoverItem) itemName = itemName.hoverEvent(itemStack.asHoverEvent());
         return itemName;
+    }
+
+    private static boolean containsTranslatable(@NotNull Component component) {
+        if (component instanceof TranslatableComponent) return true;
+        for (Component child : component.children()) {
+            if (containsTranslatable(child)) return true;
+        }
+        return false;
     }
 
     /**

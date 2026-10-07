@@ -1,8 +1,10 @@
 package dev.unnm3d.redischat.utils;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -32,6 +34,26 @@ public class ItemNameProvider {
             return (String) getItemNameMethod.invoke(itemStack.getItemMeta());
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Get the item name as a component, keeping translatable names
+     * (e.g. resource pack lang keys) that the legacy String getters flatten into raw keys
+     *
+     * @param itemStack The item to get the name from
+     * @return The name component, or null if unavailable on this platform
+     */
+    public @Nullable Component getItemNameComponent(ItemStack itemStack) {
+        final ItemMeta meta = itemStack.getItemMeta();
+        if (meta == null) return null;
+        try {
+            if (useItemName) {
+                return meta.hasItemName() ? meta.itemName() : null;
+            }
+            return meta.hasDisplayName() ? meta.displayName() : null;
+        } catch (NoSuchMethodError e) {
+            return null;
         }
     }
 
